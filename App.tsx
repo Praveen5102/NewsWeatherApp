@@ -1,11 +1,31 @@
 // App.tsx
-import React, { useState } from "react";
-import { View, StyleSheet, StatusBar, Text } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  StatusBar,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  Linking,
+  Text,
+} from "react-native";
+import * as Location from "expo-location";
+import NewsCard from "./src/components/NewsCard";
+import SearchBar from "./src/components/SearchBar";
+import WeatherCard from "./src/components/WeatherCard";
+import HeaderSection from "./src/components/HeaderSection";
+import LocationPermissionCard from "./src/components/LocationPermissionCard";
 import { colors } from "./src/theme/colors";
 import { Article, Weather, LocationData } from "./src/types";
+import {
+  fetchNewsArticles,
+  fetchWeatherData,
+  reverseGeocode,
+} from "./src/services/api";
 
 export default function App() {
-  // State declarations
   const [articles, setArticles] = useState<Article[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [weather, setWeather] = useState<Weather | null>(null);
@@ -23,17 +43,220 @@ export default function App() {
   >("pending");
   const [showPermissionCard, setShowPermissionCard] = useState(false);
 
+  // Request location permission and fetch location
+  const requestLocationPermission = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== "granted") {
+        setLocationPermissionStatus("denied");
+        setShowPermissionCard(false);
+        console.log(
+          "Location permission denied, using default location: Delhi, India"
+        );
+        return false;
+      }
+
+      setLocationPermissionStatus("granted");
+      setShowPermissionCard(false);
+
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const { latitude, longitude } = currentLocation.coords;
+      setLocation((prev) => ({ ...prev, latitude, longitude }));
+
+      // Reverse geocode to get country and city
+      const geocodeData = await reverseGeocode(latitude, longitude);
+      if (geocodeData) {
+        setLocation((prev) => ({
+          ...prev,
+          country: geocodeData.country,
+          city: geocodeData.city,
+        }));
+      }
+      return true;
+    } catch (error) {
+      console.error("Location fetch error:", error);
+      setLocationPermissionStatus("denied");
+      setShowPermissionCard(false);
+      return false;
+    }
+  }, []);
+
+  // Fetch weather data
+  const fetchWeather = useCallback(async () => {
+    try {
+      const weatherData = await fetchWeatherData(
+        location.latitude,
+        location.longitude
+      );
+      if (weatherData) {
+        setWeather(weatherData);
+      }
+    } catch (error) {
+      console.error("Weather fetch error:", error);
+    }
+  }, [location]);
+
+  // Fetch news articles - fetches trending news based on location
+  const fetchNews = useCallback(async () => {
+    try {
+      setLoading(true);
+      const query = searchQuery || `${location.country} trending`;
+      const newsData = await fetchNewsArticles(query);
+      if (newsData) {
+        setArticles(newsData);
+        setFilteredArticles(newsData);
+      }
+    } catch (error) {
+      console.error("News fetch error:", error);
+      Alert.alert("Error", "Could not fetch news articles. Please try again.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [location.country, searchQuery]);
+
+  // Handle search with dynamic filtering
+  const handleSearch = useCallback(
+    (query: string) => {
+      setSearchQuery(query);
+      if (query.trim()) {
+        const filtered = articles.filter(
+          (article) =>
+            article.title.toLowerCase().includes(query.toLowerCase()) ||
+            article.description.toLowerCase().includes(query.toLowerCase()) ||
+            article.source.name.toLowerCase().includes(query.toLowerCase())
+        );
+        setFilteredArticles(filtered);
+      } else {
+        setFilteredArticles(articles);
+        fetchNews();
+      }
+    },
+    [articles, fetchNews]
+  );
+
+  // Handle article press
+  const handleArticlePress = (url: string) => {
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Error", "Could not open article");
+    });
+  };
+
+  // Refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchNews();
+    fetchWeather();
+  }, [fetchNews, fetchWeather]);
+
+  // Initial load - check permission status
+  useEffect(() => {
+    const initializeApp = async () => {
+      const { status } = await Location.getForegroundPermissionsAsync();
+
+      if (status === "undetermined") {
+        setShowPermissionCard(true);
+        setLocationPermissionStatus("pending");
+      } else if (status === "granted") {
+        setLocationPermissionStatus("granted");
+        await requestLocationPermission();
+      } else {
+        setLocationPermissionStatus("denied");
+        console.log("Using default location: Delhi, India");
+      }
+    };
+    initializeApp();
+  }, []);
+
+  // Fetch weather and news when location changes
+  useEffect(() => {
+    if (
+      location.latitude &&
+      location.longitude &&
+      locationPermissionStatus !== "pending"
+    ) {
+      fetchWeather();
+      fetchNews();
+    }
+  }, [location, locationPermissionStatus, fetchWeather, fetchNews]);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      <View style={styles.container}>
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderText}>🚧 App Structure Ready</Text>
-          <Text style={styles.placeholderNote}>
-            ✅ Environment variables configured
+
+      {showPermissionCard && (
+        <LocationPermissionCard
+          onAllow={requestLocationPermission}
+          onDeny={() => {
+            setShowPermissionCard(false);
+            setLocationPermissionStatus("denied");
+            console.log("Using default location: Delhi, India");
+          }}
+        />
+      )}
+
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        <HeaderSection
+          locationName={weather?.location || location.city}
+          country={location.country}
+          isDefaultLocation={locationPermissionStatus === "denied"}
+        />
+
+        <SearchBar
+          value={searchQuery}
+          onChangeText={handleSearch}
+          placeholder="Search news by keyword..."
+        />
+
+        {weather && <WeatherCard weather={weather} onRefresh={fetchWeather} />}
+
+        <View style={styles.newsSection}>
+          <Text style={styles.sectionTitle}>
+            {searchQuery ? "Search Results" : `Latest in ${location.country}`}
           </Text>
         </View>
-      </View>
+
+        {loading && !articles.length ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading news...</Text>
+          </View>
+        ) : (
+          <>
+            {filteredArticles.length > 0 ? (
+              filteredArticles.map((article) => (
+                <NewsCard
+                  key={article.id}
+                  article={article}
+                  onPress={() => handleArticlePress(article.url)}
+                />
+              ))
+            ) : (
+              <View style={styles.noResultsContainer}>
+                <Text style={styles.noResultsEmoji}>📰</Text>
+                <Text style={styles.noResultsText}>No articles found</Text>
+                <Text style={styles.noResultsSubtext}>
+                  Try a different search term
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -46,28 +269,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    justifyContent: "center",
-    alignItems: "center",
   },
-  placeholder: {
-    alignItems: "center",
-    padding: 40,
+  newsSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
-  placeholderText: {
-    fontSize: 24,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: "700",
     color: colors.text,
-    marginBottom: 8,
   },
-  placeholderSubtext: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 100,
+  },
+  loadingText: {
+    marginTop: 12,
     fontSize: 14,
     color: colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 8,
+    fontWeight: "500",
   },
-  placeholderNote: {
-    fontSize: 12,
-    color: colors.success,
+  noResultsContainer: {
+    paddingVertical: 80,
+    alignItems: "center",
+  },
+  noResultsEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  noResultsText: {
+    fontSize: 18,
+    color: colors.text,
     fontWeight: "600",
+    marginBottom: 4,
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: "400",
   },
 });
