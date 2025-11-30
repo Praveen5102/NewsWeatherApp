@@ -1,6 +1,6 @@
 // src/components/HeaderSection.tsx
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
 import { format } from "date-fns";
 import { colors } from "../theme/colors";
 
@@ -8,12 +8,16 @@ interface HeaderSectionProps {
   locationName: string;
   country: string;
   isDefaultLocation?: boolean;
+  onEnableLocation?: () => void;
+  showEnableButton?: boolean;
 }
 
 const HeaderSection: React.FC<HeaderSectionProps> = ({
   locationName,
   country,
   isDefaultLocation = false,
+  onEnableLocation,
+  showEnableButton = false,
 }) => {
   const currentDate = format(new Date(), "EEE, MMM d");
   const currentTime = format(new Date(), "h:mm a");
@@ -21,17 +25,21 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>📰 News & Weather</Text>
+        <View style={styles.leftSection}>
+          <Text style={styles.title}> News & Weather</Text>
           <View style={styles.locationRow}>
-            <Text style={styles.locationIcon}>📍</Text>
+            <Image
+              source={require("../../assets/location-pin.png")}
+              style={styles.enableIcon}
+            />
             <Text style={styles.subtitle}>
               {locationName}, {country}
             </Text>
-            {isDefaultLocation && (
-              <View style={styles.defaultBadge}>
-                <Text style={styles.defaultText}>Default</Text>
-              </View>
+            {/* Enable Location Button */}
+            {showEnableButton && onEnableLocation && (
+              <TouchableOpacity onPress={onEnableLocation} activeOpacity={0.8}>
+                <Text style={styles.enableText}>↻</Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -69,6 +77,9 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 12,
   },
+  leftSection: {
+    flex: 1,
+  },
   title: {
     fontSize: 28,
     fontWeight: "800",
@@ -79,28 +90,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  locationIcon: {
-    fontSize: 14,
-    marginRight: 4,
-  },
+
   subtitle: {
     fontSize: 14,
     fontWeight: "600",
     color: colors.primary,
   },
-  defaultBadge: {
-    backgroundColor: colors.warning + "20",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 8,
-    borderWidth: 1,
-    borderColor: colors.warning + "40",
+  enableIcon: {
+    width: 20,
+    height: 30,
   },
-  defaultText: {
-    fontSize: 10,
+  enableText: {
+    marginLeft: 8,
+    marginBottom: 4,
+    fontSize: 26,
     fontWeight: "700",
-    color: colors.warning,
+    color: "black",
+    textAlign: "center",
   },
   infoRow: {
     flexDirection: "row",

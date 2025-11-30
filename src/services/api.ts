@@ -1,7 +1,7 @@
 // src/services/api.ts
 import { Article, Weather, GeocodeData } from "../types";
 
-// ✅ Using environment variables for API keys
+// Using environment variables for API keys
 const GNEWS_API_KEY = process.env.EXPO_PUBLIC_GNEWS_API_KEY;
 const OPENWEATHER_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 

@@ -55,9 +55,6 @@ const NewsCard: React.FC<NewsCardProps> = ({ article, onPress }) => {
               setImageLoading(false);
             }}
           />
-          <View style={styles.imageBadge}>
-            <Text style={styles.badgeText}>📰</Text>
-          </View>
         </View>
       )}
 
@@ -114,21 +111,6 @@ const styles = StyleSheet.create({
   },
   imageLoader: {
     position: "absolute",
-  },
-  imageBadge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    padding: 6,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-  },
-  badgeText: {
-    fontSize: 14,
   },
   content: {
     padding: 14,

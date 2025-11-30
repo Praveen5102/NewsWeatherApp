@@ -1,4 +1,3 @@
-// App.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -16,7 +15,6 @@ import NewsCard from "./src/components/NewsCard";
 import SearchBar from "./src/components/SearchBar";
 import WeatherCard from "./src/components/WeatherCard";
 import HeaderSection from "./src/components/HeaderSection";
-import LocationPermissionCard from "./src/components/LocationPermissionCard";
 import { colors } from "./src/theme/colors";
 import { Article, Weather, LocationData } from "./src/types";
 import {
@@ -41,7 +39,6 @@ export default function App() {
   const [locationPermissionStatus, setLocationPermissionStatus] = useState<
     "pending" | "granted" | "denied"
   >("pending");
-  const [showPermissionCard, setShowPermissionCard] = useState(false);
 
   // Request location permission and fetch location
   const requestLocationPermission = useCallback(async () => {
@@ -50,15 +47,14 @@ export default function App() {
 
       if (status !== "granted") {
         setLocationPermissionStatus("denied");
-        setShowPermissionCard(false);
-        console.log(
-          "Location permission denied, using default location: Delhi, India"
+        Alert.alert(
+          "Permission Denied",
+          "Location permission denied. Using Delhi, India as default location."
         );
         return false;
       }
 
       setLocationPermissionStatus("granted");
-      setShowPermissionCard(false);
 
       const currentLocation = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
@@ -78,9 +74,8 @@ export default function App() {
       }
       return true;
     } catch (error) {
-      console.error("Location fetch error:", error);
       setLocationPermissionStatus("denied");
-      setShowPermissionCard(false);
+      Alert.alert("Could not fetch location. Using default location.");
       return false;
     }
   }, []);
@@ -158,10 +153,7 @@ export default function App() {
     const initializeApp = async () => {
       const { status } = await Location.getForegroundPermissionsAsync();
 
-      if (status === "undetermined") {
-        setShowPermissionCard(true);
-        setLocationPermissionStatus("pending");
-      } else if (status === "granted") {
+      if (status === "granted") {
         setLocationPermissionStatus("granted");
         await requestLocationPermission();
       } else {
@@ -188,17 +180,6 @@ export default function App() {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
-      {showPermissionCard && (
-        <LocationPermissionCard
-          onAllow={requestLocationPermission}
-          onDeny={() => {
-            setShowPermissionCard(false);
-            setLocationPermissionStatus("denied");
-            console.log("Using default location: Delhi, India");
-          }}
-        />
-      )}
-
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
@@ -214,6 +195,8 @@ export default function App() {
           locationName={weather?.location || location.city}
           country={location.country}
           isDefaultLocation={locationPermissionStatus === "denied"}
+          onEnableLocation={requestLocationPermission}
+          showEnableButton={locationPermissionStatus !== "granted"}
         />
 
         <SearchBar
