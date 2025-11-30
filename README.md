@@ -27,7 +27,7 @@ A modern React Native mobile application that provides real-time news updates an
 *Main screen showing news feed and weather card*
 
 ### Search Functionality
-![Search Screen](./assets/serachresult.jpeg)
+![Search Screen](./assets/searchresult.jpeg)
 *Real-time search filtering news articles*
 
 ### Weather Display
