@@ -23,19 +23,19 @@ A modern React Native mobile application that provides real-time news updates an
 ## 📸 Screenshots
 
 ### Home Screen
-![Home Screen](./screenshots/home.png)
+![Home Screen](./assets/homescreen.jpeg)
 *Main screen showing news feed and weather card*
 
 ### Search Functionality
-![Search Screen](./screenshots/search.png)
+![Search Screen](./assets/serachresult.jpeg)
 *Real-time search filtering news articles*
 
 ### Weather Display
-![Weather Card](./screenshots/weather.png)
+![Weather Card](./assets/weathercard.jpeg)
 *Current weather information with dynamic gradients*
 
 ### Location Permission
-![Location Modal](./screenshots/location-modal.png)
+![Location Modal](./assets/locationpermission.jpeg)
 *Location permission request with feature explanations*
 
 ## 🛠️ Technical Stack
